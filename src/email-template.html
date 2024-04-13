@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Email Analysis Tool</title>
+		<style>
+			body {
+				font-family: Arial, sans-serif;
+				padding: 20px;
+				background-color: #f4f4f4;
+			}
+			.container {
+				max-width: 60em;
+				margin: auto;
+				background: #fff;
+				padding: 20px;
+				box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+			}
+			.input-area {
+				margin-bottom: 20px;
+				display: flex;
+				flex-direction: column;
+			}
+			textarea {
+				padding: 10px;
+				margin-bottom: 20px;
+				border: 1px solid #ddd;
+				height: 150px; /* Adjust height as needed */
+			}
+			.analysis-section {
+				background-color: #eee;
+				padding: 15px;
+				margin-bottom: 10px;
+			}
+			.analysis-title {
+				margin: 0;
+				padding-bottom: 10px;
+				border-bottom: 1px solid #ddd;
+				margin-bottom: 10px;
+			}
+			.analysis-content {
+				list-style: none;
+				padding: 0;
+			}
+			.analysis-content li {
+				margin-bottom: 5px;
+			}
+			.bad-links {
+				color: red;
+				margin-bottom: 10px;
+			}
+			.button {
+				background-color: #1976d2;
+				border: none;
+				border-radius: 5px;
+				padding: 0.7em;
+				cursor: pointer;
+			}
+			.slider-container {
+				width: 80%;
+				margin: auto;
+				margin-bottom: 20px;
+			}
+
+			.slider {
+				-webkit-appearance: none;
+				width: 100%;
+				height: 10px;
+				border-radius: 5px;
+				background: linear-gradient(to right, red, yellow, green);
+				outline: none;
+				opacity: 0.7;
+				-webkit-transition: 0.2s;
+				transition: opacity 0.2s;
+			}
+
+			.slider:hover {
+				opacity: 1;
+			}
+
+			.slider::-webkit-slider-thumb {
+				-webkit-appearance: none;
+				appearance: none;
+				width: 25px;
+				height: 25px;
+				border-radius: 50%;
+				background: orange;
+				cursor: pointer;
+			}
+
+			.slider::-moz-range-thumb {
+				width: 25px;
+				height: 25px;
+				border-radius: 50%;
+				background: orange;
+				cursor: pointer;
+			}
+
+			.labels {
+				display: flex;
+				justify-content: space-between;
+				padding: 0 10px;
+			}
+
+			.labels span {
+				color: black;
+				font-size: 14px;
+			}
+			.loader {
+				border: 6px solid #f3f3f3; /* Light grey */
+				border-top: 6px solid #3498db; /* Blue */
+				border-radius: 50%;
+				width: 50px;
+				height: 50px;
+				animation: spin 1s linear infinite;
+			}
+
+			@keyframes spin {
+				0% {
+					transform: rotate(0deg);
+				}
+				100% {
+					transform: rotate(360deg);
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<div class="container">
+			<small style="color: red">* Note : All the data is produce by lama2 modal , no fine tuning of modal is done yet</small>
+
+			<div class="input-area">
+				<form class="input-area" id="query-form">
+					<label for="emailContent"><h1 class="analysis-title">Paste your email content</h1></label>
+					<textarea name="query" id="emailContent" placeholder="Copy and paste the email you want to analyze below."></textarea>
+					<div type="submit" style="display: flex; justify-content: end"><button class="button">Submit</button></div>
+				</form>
+			</div>
+			<div>
+				<div class="slider-container">
+					<input type="range" min="1" max="100" value="0" class="slider" id="myRange" />
+					<div class="labels">
+						<span>Low</span>
+						<span>Medium</span>
+						<span>High</span>
+						<span>Excellent</span>
+					</div>
+				</div>
+			</div>
+
+			<div id="analysis-section-id" style="display: none" class="analysis-section">
+				<h2 class="analysis-title" onclick="toggleAccordion('analysis-content')">Analysis complete</h2>
+				<div id="analysis-content" class="analysis-content" style="display: none">
+					<div>
+						<h3>Trigger word Analysis</h3>
+						<p id="trigger-analysis"></p>
+					</div>
+					<div>
+						<h3>Language Tone Anaylisis</h3>
+						<p id="tone-analysis"></p>
+					</div>
+					<div>
+						<h3>Check of Unsubscribe link</h3>
+						<p id="check-for-unsubscribe-link"></p>
+					</div>
+				</div>
+				<!-- Loader added -->
+			</div>
+			<div id="loader" class="loader" style="display: none; margin: 20px auto"></div>
+		</div>
+
+		<script>
+			let spamPercentage = 37;
+			// Your JavaScript function
+			function toggleAccordion(id) {
+				var content = document.getElementById(id);
+				if (content.style.display === 'block') {
+					content.style.display = 'none';
+				} else {
+					content.style.display = 'block';
+				}
+			}
+
+			// Set the value of the slider
+			function setSliderValue(newValue) {
+				const slider = document.getElementById('myRange');
+				// Check if the new value is within the slider's range
+				const min = parseInt(slider.min, 10);
+				const max = parseInt(slider.max, 10);
+
+				if (newValue >= min && newValue <= max) {
+					slider.value = newValue;
+					// Trigger any event handlers that are listening for the 'input' event
+					slider.dispatchEvent(new Event('input'));
+				}
+			}
+
+			// Example usage: Set the slider to a value of 75
+
+			function findFirstNumber(text) {
+				// Regular expression pattern to find numbers
+				const pattern = /\d+/;
+				// Search for the pattern in the text
+				const match = text.match(pattern);
+				// If a match is found, convert it to an integer and return
+				if (match) {
+					return parseInt(match[0], 10);
+				} else {
+					// If no number is found, return null
+					return 0;
+				}
+			}
+
+			// on submit form
+			const submitForm = async (formEvent) => {
+				if (!formEvent.target.query.value) {
+					alert('Please add the email content');
+					return;
+				}
+				const loader = document.getElementById('loader');
+				const analysisContent = document.getElementById('analysis-content');
+				const analysisSection = document.getElementById('analysis-section-id');
+
+				loader.style.display = 'block'; // Show the loader
+				analysisContent.style.display = 'none';
+				formEvent.preventDefault();
+
+				console.log('getting the form data', formEvent.target.query.value);
+
+				const response = await fetch('/', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({
+						query: formEvent.target.query.value,
+					}),
+				});
+
+				const toneresponse = await fetch('/tone', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({
+						query: formEvent.target.query.value,
+					}),
+				});
+				const unsubscriberesponse = await fetch('/unsubscribe', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({
+						query: formEvent.target.query.value,
+					}),
+				});
+				const spamChances = await fetch('/spam-changes', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({
+						query: formEvent.target.query.value,
+					}),
+				});
+
+				const answer = await response.text();
+				const answer2 = await toneresponse.text();
+				const answer3 = await unsubscriberesponse.text();
+				const answer4 = await spamChances.text();
+
+				console.log('spam chances', answer4);
+
+				spamPercentage = findFirstNumber(answer4);
+
+				setSliderValue(spamPercentage);
+
+				loader.style.display = 'none'; // Hide the loader
+				analysisContent.style.display = 'block'; // Sho
+				analysisSection.style.display = 'block';
+
+				console.log('getting the answer formt the api', answer);
+
+				const formattedResponse = `<div style="font-family: Arial, sans-serif; padding: 20px;">
+  <p>${answer.replace(/\n/g, '<br>')}</p>
+</div>`;
+				const formattedResponse2 = `<div style="font-family: Arial, sans-serif; padding: 20px;">
+  <p>${answer2.replace(/\n/g, '<br>')}</p>
+</div>`;
+				const formattedResponse3 = `<div style="font-family: Arial, sans-serif; padding: 20px;">
+  <p>${answer3.replace(/\n/g, '<br>')}</p>
+</div>`;
+
+				document.querySelector('#trigger-analysis').innerHTML = formattedResponse;
+				document.querySelector('#tone-analysis').innerHTML = formattedResponse2;
+				document.querySelector('#check-for-unsubscribe-link').innerHTML = formattedResponse3;
+
+				event.target.query.value = '';
+			};
+
+			document.querySelector('form#query-form').addEventListener('submit', submitForm);
+		</script>
+	</body>
+</html>
