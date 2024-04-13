@@ -13,6 +13,7 @@ Take the email content and anyalis the email on following things
 - trigger words
 - natural language and conversation tone
 - unsubscribe link
+- ![Demo Page View](./assset/image.png)
 
 ## Installation Steps
 
